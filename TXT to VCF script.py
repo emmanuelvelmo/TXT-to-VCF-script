@@ -2,13 +2,9 @@ import os # Manejo de rutas y directorios
 import sys # Para salida del programa
 
 # FUNCIONES
-# Muestra mensaje de error y detiene el programa
-def mostrar_error_y_salir(mensaje_error):
+# Muestra mensaje de error y continúa el programa
+def mostrar_error(mensaje_error):
     print(mensaje_error) # Mostrar mensaje de error proporcionado
-    
-    input() # Esperar entrada del usuario antes de cerrar
-    
-    sys.exit(1) # Terminar programa con código de error
 
 # Lee archivo txt línea por línea y extrae números telefónicos
 def leer_numeros_desde_archivo(ruta_archivo):
@@ -28,17 +24,19 @@ def leer_numeros_desde_archivo(ruta_archivo):
                     numeros_lista.append(numero_limpio)
     
     except FileNotFoundError:
-        mostrar_error_y_salir("File not found")
+        mostrar_error("File not found")
+        
+        return []
     
     except PermissionError:
-        mostrar_error_y_salir("Permission denied")
+        mostrar_error("Permission denied")
+        
+        return []
     
     except Exception as error_general:
-        mostrar_error_y_salir(f"Error reading file: {error_general}")
-    
-    # Verificar que se encontraron números
-    if not numeros_lista:
-        mostrar_error_y_salir("No phone numbers found in file")
+        mostrar_error(f"Error reading file: {error_general}")
+        
+        return []
     
     return numeros_lista
 
@@ -69,26 +67,31 @@ def guardar_archivo_vcf(contenido_vcf, directorio_salida):
         with open(ruta_salida, 'w', encoding = 'utf-8') as archivo_vcf:
             archivo_vcf.write(contenido_vcf)
         
-        # Mostrar confirmación de guardado
-        print(f"VCF file created: {ruta_salida}")
+        return ruta_salida # Retornar ruta del archivo generado
     
     except PermissionError:
-        mostrar_error_y_salir("Permission denied for writing file")
+        mostrar_error("Permission denied for writing file")
+        
+        return None
     
     except Exception as error_general:
-        mostrar_error_y_salir(f"Error writing file: {error_general}")
+        mostrar_error(f"Error writing file: {error_general}")
+        
+        return None
 
 # BUCLE PRINCIPAL DEL PROGRAMA
 try:
-    # Solicitar ruta del archivo txt al usuario
+    # Obtener directorio del script actual
+    directorio_actual = os.path.dirname(os.path.abspath(__file__))
+    
+    # Bucle principal para procesar múltiples archivos
     while True:
+        # Solicitar ruta del archivo txt al usuario
         ruta_txt_input = input("Enter TXT file path: ").strip()
         
-        # Verificar que se ingresó una ruta
-        if not ruta_txt_input:
-            print("Please enter a valid path\n")
-            
-            continue
+        # Salir del programa si se ingresa texto vacío (sólo Enter)
+        if ruta_txt_input == "":
+            break
         
         # Expandir rutas con caracteres especiales como ~
         ruta_txt_expandida = os.path.expanduser(ruta_txt_input)
@@ -96,30 +99,30 @@ try:
         # Verificar que el archivo existe
         if not os.path.isfile(ruta_txt_expandida):
             print("File does not exist\n")
-        else:
-            ruta_txt = ruta_txt_expandida
             
-            break
-    
-    # Obtener directorio del script actual
-    directorio_actual = os.path.dirname(os.path.abspath(__file__))
-    
-    # Leer números del archivo txt
-    lista_numeros = leer_numeros_desde_archivo(ruta_txt)
-    
-    # Generar contenido VCF
-    contenido_vcf = generar_contenido_vcf(lista_numeros)
-    
-    # Guardar archivo VCF en directorio del script
-    guardar_archivo_vcf(contenido_vcf, directorio_actual)
-    
-    print(f"Process completed. {len(lista_numeros)} contacts generated.")
+            continue
+        
+        # Leer números del archivo txt
+        lista_numeros = leer_numeros_desde_archivo(ruta_txt_expandida)
+        
+        # Verificar que se encontraron números
+        if not lista_numeros:
+            print("No phone numbers found in file\n")
+            
+            continue
+        
+        # Generar contenido VCF
+        contenido_vcf = generar_contenido_vcf(lista_numeros)
+        
+        # Guardar archivo VCF en directorio del script
+        ruta_guardado = guardar_archivo_vcf(contenido_vcf, directorio_actual)
+        
+        # Mostrar resultado si se guardó correctamente
+        if ruta_guardado:
+            print(f"{len(lista_numeros)} contacts generated\n")
 
 except KeyboardInterrupt:
     print("\nOperation cancelled by user")
 
 except Exception as error_inesperado:
-    mostrar_error_y_salir(f"Unexpected error: {error_inesperado}")
-
-# FINALIZAR PROGRAMA
-input() # Esperar entrada antes de cerrar terminal
+    print(f"Unexpected error: {error_inesperado}")
